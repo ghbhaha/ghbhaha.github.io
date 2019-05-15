@@ -1,0 +1,199 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>ghbhaha的站点</title>
+  
+  <subtitle>做个勤奋的骚年吧</subtitle>
+  <link href="/atom.xml" rel="self"/>
+  
+  <link href="/"/>
+  <updated>2019-04-09T09:05:06.598Z</updated>
+  <id>/</id>
+  
+  <author>
+    <name>ghbhaha</name>
+    
+  </author>
+  
+  <generator uri="http://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>nginx 负载均衡实现</title>
+    <link href="/2019/04/09/nginx-%E8%B4%9F%E8%BD%BD%E5%9D%87%E8%A1%A1%E5%AE%9E%E7%8E%B0/"/>
+    <id>/2019/04/09/nginx-负载均衡实现/</id>
+    <published>2019-04-09T09:04:45.000Z</published>
+    <updated>2019-04-09T09:05:06.598Z</updated>
+    
+    <summary type="html">
+    
+    </summary>
+    
+    
+      <category term="nginx" scheme="/tags/nginx/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>时间轮盘app实现</title>
+    <link href="/2019/04/09/%E6%97%B6%E9%97%B4%E8%BD%AE%E7%9B%98app%E5%AE%9E%E7%8E%B0/"/>
+    <id>/2019/04/09/时间轮盘app实现/</id>
+    <published>2019-04-09T09:01:35.000Z</published>
+    <updated>2019-05-15T03:04:51.324Z</updated>
+    
+    <content type="html"><![CDATA[<p>在mac上看到一款炫酷锁屏，所以按照自己的思路实现了其中一个效果，顺手码了个App，名为“时间轮盘”。“时间轮盘”包括动态壁纸和屏保功能。<br><a href="https://www.coolapk.com/apk/com.suda.datetimewallpaper" target="_blank" rel="noopener">下载地址</a></p><h2><span id="实现效果">实现效果</span></h2><div class="image-size-50-percent"><br> <img src="/2019/04/09/时间轮盘app实现/time_app.jpg" title="image"><br></div><!-- toc --><ul><li><a href="#准备">准备</a></li><li><a href="#实现">实现</a><ul><li><a href="#1绘制轮盘">1.绘制轮盘</a></li><li><a href="#2显示正确的时间">2.显示正确的时间</a></li><li><a href="#3让我们的轮盘动起来">3.让我们的轮盘动起来</a></li><li><a href="#4显示到壁纸">4.显示到壁纸</a><ul><li><a href="#41添加壁纸权限">4.1添加壁纸权限</a></li><li><a href="#42实现壁纸服务">4.2实现壁纸服务</a></li><li><a href="#43添加my_wallpaperxml">4.3添加my_wallpaper.xml</a></li><li><a href="#44添加服务到清单">4.4添加服务到清单</a></li><li><a href="#45跳转设置壁纸">4.5跳转设置壁纸</a></li></ul></li></ul></li><li><a href="#网页版轮盘">网页版轮盘</a></li></ul><!-- tocstop --><h2><span id="准备">准备</span></h2><p>工欲善其事必先利其器，要实现功能首先需要了解相关技术栈。“时间轮盘”涉及到绘制，因此需要了解Canvas,Paint,Matrix相关Api。最终需要将绘制的图形展示到动态壁纸和屏保，因此需要分别继承WallpaperService和DreamService，并实现相关方法。</p><h2><span id="实现">实现</span></h2><h3><span id="1绘制轮盘">1.绘制轮盘</span></h3><p>实现程序绕不开绘制，因此我们先自定义一个View，重写onDraw()方法来实现轮盘的绘制。根据效果图分析，轮盘的环绕文字从内向外逐层显示，每一层显示一种具体时间字段。所以我们先实现一层（月份）绘制，接下的按照同样的方法进行绘制。</p><p>查阅文档，安卓关于文字绘制有以下方法</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">drawText</span> <span class="params">(CharSequence text, <span class="keyword">int</span> start, <span class="keyword">int</span> end, <span class="keyword">float</span> x,<span class="keyword">float</span> y, Paint paint)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">drawText</span> <span class="params">(String text, <span class="keyword">float</span> x, <span class="keyword">float</span> y, Paint paint)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">drawText</span> <span class="params">(<span class="keyword">char</span>[] text, <span class="keyword">int</span> index, <span class="keyword">int</span> count, <span class="keyword">float</span> x, <span class="keyword">float</span> y, Paint paint)</span></span></span><br><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">drawText</span> <span class="params">(String text, <span class="keyword">int</span> start, <span class="keyword">int</span> end, <span class="keyword">float</span> x, <span class="keyword">float</span> y, Paint paint)</span></span></span><br></pre></td></tr></table></figure><p>我们只需要使用到</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title">drawText</span> <span class="params">(String text, <span class="keyword">float</span> x, <span class="keyword">float</span> y, Paint paint)</span></span></span><br></pre></td></tr></table></figure><p>首先我们现在原点进行绘制”一月”,那么我们如何将绘制内容移动到画布中央呢，这时候我们就需要用到Matrix，Matrix在图形绘制中起着重要的作用，通过Matrix我们可以实现图形的缩放，旋转，平移以及它们的组合效果。</p><p>先使用</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">postTranslate</span><span class="params">(<span class="keyword">float</span> dx, <span class="keyword">float</span> dy)</span></span></span><br></pre></td></tr></table></figure><p>进行平移，根据效果图我们发现绘制距离中点还有一定距离，我们仅需再向右平移一段距离，最后通过调用</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Canvas.setMatrix(Matrix matrix)</span><br></pre></td></tr></table></figure><p>来应用Matrix，就可以愉快的绘制了。</p><p>接下来我们再绘制”二月”，和”一月”不同的是，”二月”相对于”一月”有一定的偏转角度，我们只要围绕画布中心点进行旋转就行了。</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">boolean</span> <span class="title">postRotate</span><span class="params">(<span class="keyword">float</span> degrees, <span class="keyword">float</span> px, <span class="keyword">float</span> py)</span></span></span><br></pre></td></tr></table></figure><p>旋转角度为360/12=30,同理接下来的月份就好办了。</p><p>将代码封装下</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> String[] months = &#123;</span><br><span class="line">        <span class="string">"壹"</span>, <span class="string">"贰"</span>, <span class="string">"仨"</span>, <span class="string">"肆"</span>, <span class="string">"伍"</span>, <span class="string">"陆"</span>,</span><br><span class="line">        <span class="string">"柒"</span>, <span class="string">"捌"</span>, <span class="string">"玖"</span>, <span class="string">"拾"</span>, <span class="string">"拾壹"</span>, <span class="string">"拾贰"</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">onDraw</span><span class="params">(Canvas canvas)</span> </span>&#123;</span><br><span class="line">    drawText(canvas,<span class="number">40</span>,months)</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> canvas</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> radius   距中心距离</span></span><br><span class="line"><span class="comment"> * <span class="doctag">@param</span> strArray 轮盘文字数组</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="function"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title">drawText</span><span class="params">(Canvas canvas, <span class="keyword">float</span> radius, String[] strArray)</span> </span>&#123;</span><br><span class="line">    <span class="keyword">int</span> width = canvas.getWidth();</span><br><span class="line">    <span class="keyword">int</span> height = canvas.getHeight();</span><br><span class="line">    <span class="keyword">float</span> addD = <span class="number">360f</span> / strArray.length;</span><br><span class="line">    <span class="keyword">float</span> degree = <span class="number">0f</span>;</span><br><span class="line">    <span class="keyword">for</span> (String str : strArray) &#123;</span><br><span class="line">        <span class="comment">//重置Matrix</span></span><br><span class="line">        matrix.reset();</span><br><span class="line">        <span class="comment">//平移Matrix</span></span><br><span class="line">        matrix.postTranslate(width / <span class="number">2</span>, height / <span class="number">2</span>);</span><br><span class="line">        matrix.postTranslate(radius, <span class="number">0</span>);</span><br><span class="line">        <span class="comment">//旋转Matrix</span></span><br><span class="line">        matrix.postRotate(degree, width / <span class="number">2</span>, height / <span class="number">2</span>);</span><br><span class="line">        <span class="comment">//设置Matrix</span></span><br><span class="line">        canvas.setMatrix(matrix);</span><br><span class="line">        canvas.drawText(str, <span class="number">0</span>, <span class="number">0</span>, clockPaint);</span><br><span class="line">        degree += addD;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure><p>通过以上代码，我们便能够实现一个静态的时间轮盘了。</p><h3><span id="2显示正确的时间">2.显示正确的时间</span></h3><p>根据效果图我们知道，当前时间高亮显示，并且总是显示在右侧一行。我们需要将整个圆环进行旋转，一直转到当前时间。</p><p>首先我们通过调用Calendar的方法</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="function"><span class="keyword">public</span> <span class="keyword">int</span> <span class="title">get</span><span class="params">(<span class="keyword">int</span> field)</span></span></span><br><span class="line"><span class="function"></span></span><br><span class="line"><span class="function">Calendar.MONTH</span></span><br><span class="line"><span class="function">Calendar.DATE</span></span><br><span class="line"><span class="function">Calendar.HOUR_OF_DAY</span></span><br><span class="line"><span class="function">Calendar.MINUTE</span></span><br><span class="line"><span class="function">Calendar.SECOND</span></span><br></pre></td></tr></table></figure><p>获取到月，日等时间字段，拿月示例，现在是四月，根据</p><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Calendar.get(Calendar.MONTH)</span><br></pre></td></tr></table></figure><p>我们获取到的值3,我们只需要逆时针旋转(360/12)*3就能够将四月旋转到正确的位置，并且将其设置高亮色，其他同理。<br></p><h3><span id="3让我们的轮盘动起来">3.让我们的轮盘动起来</span></h3><p>通过 (当前毫秒%1000/1000f) * 360 可以知道当前秒数的偏移量，在绘制的时候只要再加上这个偏移量，再通过一个定时器定时的执行重绘工作,便可以实现轮盘的转动了。</p><h3><span id="4显示到壁纸">4.显示到壁纸</span></h3><h4><span id="41添加壁纸权限">4.1添加壁纸权限</span></h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">uses-permission</span> <span class="attr">android:name</span>=<span class="string">"android.permission.SET_WALLPAPER"</span>/&gt;</span></span><br></pre></td></tr></table></figure><h4><span id="42实现壁纸服务">4.2实现壁纸服务</span></h4><p>继承WallpaperService并实现onCreateEngine<br><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br></pre></td><td class="code"><pre><span class="line"><span class="function">override fun <span class="title">onCreateEngine</span><span class="params">()</span>: WallpaperService.Engine </span>&#123;</span><br><span class="line">    <span class="keyword">return</span> LiveWallpaperEngine()</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">private inner class LiveWallpaperEngine : WallpaperService.Engine() &#123;</span><br><span class="line"></span><br><span class="line">    <span class="function">override fun <span class="title">onSurfaceCreated</span><span class="params">(holder: SurfaceHolder)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.onSurfaceCreated(holder)</span><br><span class="line">        <span class="comment">//获取画布</span></span><br><span class="line">        val canvas = holder!!.lockCanvas()</span><br><span class="line">        <span class="comment">//绘制到画布</span></span><br><span class="line">        ...</span><br><span class="line">        ...</span><br><span class="line">        <span class="comment">//显示到屏幕</span></span><br><span class="line">        holder!!.unlockCanvasAndPost(canvas)</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">override fun <span class="title">onVisibilityChanged</span><span class="params">(visible: Boolean)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.onVisibilityChanged(visible)</span><br><span class="line">        <span class="comment">//为了省电，我们可以在壁纸不显示的时候，停止绘制线程</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">override fun <span class="title">onSurfaceChanged</span><span class="params">(holder: SurfaceHolder, format: Int, width: Int, height: Int)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.onSurfaceChanged(holder, format, width, height)</span><br><span class="line">        <span class="comment">//在屏幕旋转时调整画布大小</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="function">override fun <span class="title">onSurfaceDestroyed</span><span class="params">(holder: SurfaceHolder)</span> </span>&#123;</span><br><span class="line">        <span class="keyword">super</span>.onSurfaceDestroyed(holder)</span><br><span class="line">        <span class="comment">//销毁绘制线程</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure></p><h4><span id="43添加my_wallpaperxml">4.3添加my_wallpaper.xml</span></h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">&lt;?xml version="1.0" encoding="utf-8"?&gt;</span></span><br><span class="line"><span class="tag">&lt;<span class="name">wallpaper</span> <span class="attr">xmlns:android</span>=<span class="string">"http://schemas.android.com/apk/res/android"</span></span></span><br><span class="line"><span class="tag">    <span class="attr">android:description</span>=<span class="string">"@string/app_name"</span> /&gt;</span></span><br></pre></td></tr></table></figure><h4><span id="44添加服务到清单">4.4添加服务到清单</span></h4><figure class="highlight xml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="tag">&lt;<span class="name">service</span></span></span><br><span class="line"><span class="tag">    <span class="attr">android:name</span>=<span class="string">".service.LiveWallPaperService"</span></span></span><br><span class="line"><span class="tag">    <span class="attr">android:permission</span>=<span class="string">"android.permission.BIND_WALLPAPER"</span>&gt;</span></span><br><span class="line">    <span class="tag">&lt;<span class="name">intent-filter</span>&gt;</span></span><br><span class="line">        <span class="tag">&lt;<span class="name">action</span> <span class="attr">android:name</span>=<span class="string">"android.service.wallpaper.WallpaperService"</span>/&gt;</span></span><br><span class="line">    <span class="tag">&lt;/<span class="name">intent-filter</span>&gt;</span></span><br><span class="line"></span><br><span class="line">    <span class="tag">&lt;<span class="name">meta-data</span></span></span><br><span class="line"><span class="tag">         <span class="attr">android:name</span>=<span class="string">"android.service.wallpaper"</span></span></span><br><span class="line"><span class="tag">         <span class="attr">android:resource</span>=<span class="string">"@xml/my_wallpaper"</span>/&gt;</span></span><br><span class="line"><span class="tag">&lt;/<span class="name">service</span>&gt;</span></span><br></pre></td></tr></table></figure><h4><span id="45跳转设置壁纸">4.5跳转设置壁纸</span></h4><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">Intent intent = <span class="keyword">new</span> Intent();</span><br><span class="line">intent.setAction(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER);</span><br><span class="line">intent.putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,</span><br><span class="line">    <span class="keyword">new</span> ComponentName(activity.getApplicationContext().getPackageName(), LiveWallPaperService.class.getCanonicalName()));</span><br><span class="line">activity.startActivityForResult(intent, requestCode);</span><br></pre></td></tr></table></figure><h2><span id="网页版轮盘">网页版轮盘</span></h2><p><a href="https://ghbhaha.github.io/DateTimewallpaper_Communication/editer.html" target="_blank" rel="noopener">https://ghbhaha.github.io/DateTimewallpaper_Communication/editer.html</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;在mac上看到一款炫酷锁屏，所以按照自己的思路实现了其中一个效果，顺手码了个App，名为“时间轮盘”。“时间轮盘”包括动态壁纸和屏保功能。&lt;br&gt;&lt;a href=&quot;https://www.coolapk.com/apk/com.suda.datetimewallpaper&quot;
+      
+    
+    </summary>
+    
+    
+      <category term="android" scheme="/tags/android/"/>
+    
+      <category term="canvas" scheme="/tags/canvas/"/>
+    
+      <category term="matrix" scheme="/tags/matrix/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>linux下使用git push时免输入账号密码</title>
+    <link href="/2015/02/28/linux%E4%B8%8B%E4%BD%BF%E7%94%A8git-push%E6%97%B6%E5%85%8D%E8%BE%93%E5%85%A5%E8%B4%A6%E5%8F%B7%E5%AF%86%E7%A0%81/"/>
+    <id>/2015/02/28/linux下使用git-push时免输入账号密码/</id>
+    <published>2015-02-27T16:00:00.000Z</published>
+    <updated>2019-04-09T13:34:27.784Z</updated>
+    
+    <content type="html"><![CDATA[<p>1.在~下，创建文件 .git-credentials, 用gedit编辑此文件：<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">suda<span class="variable">@suda</span>-Aspire-<span class="number">4750</span><span class="symbol">:~</span><span class="variable">$cd</span></span><br><span class="line">suda<span class="variable">@suda</span>-Aspire-<span class="number">4750</span><span class="symbol">:~</span><span class="variable">$touch</span> .git-credentials</span><br><span class="line">suda<span class="variable">@suda</span>-Aspire-<span class="number">4750</span><span class="symbol">:~</span><span class="variable">$gedit</span> .git-credentials</span><br></pre></td></tr></table></figure></p><p>然后输入:https://{username}:<a href="mailto:{password}@github.com" target="_blank" rel="noopener">{password}@github.com</a><br>例如:<a href="https://aoeddklj:1233ds@github.com" target="_blank" rel="noopener">https://aoeddklj:1233ds@github.com</a><br>2.在终端下执行<br><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">suda@suda-Aspire-4750:~<span class="variable">$git</span><span class="built_in"> config </span>--global credential.helper store</span><br></pre></td></tr></table></figure></p><p>3.查看~/.gitconfig是否会多了一项：<br><figure class="highlight ini"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="section">[credential]</span></span><br><span class="line"><span class="attr">helper</span> = store</span><br></pre></td></tr></table></figure></p><p>如果存在，就不需要输入密码了</p><p>参考:<a href="http://weibo.com/p/1001603737697985379267?from=page_100505_profile&amp;wvr=6&amp;mod=wenzhangmod" target="_blank" rel="noopener">http://weibo.com/p/1001603737697985379267?from=page_100505_profile&amp;wvr=6&amp;mod=wenzhangmod</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;1.在~下，创建文件 .git-credentials, 用gedit编辑此文件：&lt;br&gt;&lt;figure class=&quot;highlight elixir&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/sp
+      
+    
+    </summary>
+    
+      <category term="教程" scheme="/categories/%E6%95%99%E7%A8%8B/"/>
+    
+    
+      <category term="linux" scheme="/tags/linux/"/>
+    
+      <category term="github" scheme="/tags/github/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>解决使用hexo的常见问题</title>
+    <link href="/2015/01/25/%E8%A7%A3%E5%86%B3%E4%BD%BF%E7%94%A8hexo%E7%9A%84%E5%B8%B8%E8%A7%81%E9%97%AE%E9%A2%98/"/>
+    <id>/2015/01/25/解决使用hexo的常见问题/</id>
+    <published>2015-01-24T16:00:00.000Z</published>
+    <updated>2019-04-08T15:20:57.594Z</updated>
+    
+    <content type="html"><![CDATA[<p>#1、Hexo无法解析模板文件</p><p>hexo clean<br>hexo generate</p><p>然后打开页面显示的是：</p><figure class="highlight gcode"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">&lt;<span class="meta">%</span>- partial<span class="comment">('_partial/head')</span> <span class="meta">%</span>&gt;</span><br><span class="line">&lt;<span class="meta">%</span>- partial<span class="comment">('_partial/header')</span> <span class="meta">%</span>&gt;</span><br><span class="line">&lt;<span class="meta">%</span>- body <span class="meta">%</span>&gt;</span><br><span class="line">&lt;<span class="meta">%</span> <span class="keyword">if</span> <span class="comment">(theme.sidebar &amp;&amp; theme.sidebar !== 'bottom')</span>&#123; <span class="meta">%</span>&gt; &lt;<span class="meta">%</span>- partial<span class="comment">('_partial/sidebar')</span> <span class="meta">%</span>&gt; &lt;<span class="meta">%</span> &#125; <span class="meta">%</span>&gt;</span><br><span class="line">&lt;<span class="meta">%</span>- partial<span class="comment">('_partial/footer')</span> <span class="meta">%</span>&gt;</span><br><span class="line">&lt;<span class="meta">%</span>- partial<span class="comment">('_partial/mobile-nav')</span> <span class="meta">%</span>&gt; &lt;<span class="meta">%</span>- partial<span class="comment">('_partial/after-footer')</span> <span class="meta">%</span>&gt;</span><br></pre></td></tr></table></figure><p>theme使用的是默认的landscape</p><p>解决方案：</p><p>在工程目录执行下面3个命令，高版本的hexo移除默认的ejs</p><figure class="highlight sql"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">$ npm <span class="keyword">install</span> hexo-renderer-ejs <span class="comment">--save</span></span><br><span class="line">$ npm <span class="keyword">install</span> hexo-renderer-stylus <span class="comment">--save</span></span><br><span class="line">$ npm <span class="keyword">install</span> hexo-renderer-marked <span class="comment">--save</span></span><br></pre></td></tr></table></figure><p>#2、中文乱码</p><p>解决方案：将md文件和yml文件的格式设置为UTF-8</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;#1、Hexo无法解析模板文件&lt;/p&gt;
+&lt;p&gt;hexo clean&lt;br&gt;hexo generate&lt;/p&gt;
+&lt;p&gt;然后打开页面显示的是：&lt;/p&gt;
+&lt;figure class=&quot;highlight gcode&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;
+      
+    
+    </summary>
+    
+      <category term="教程" scheme="/categories/%E6%95%99%E7%A8%8B/"/>
+    
+    
+      <category term="hexo" scheme="/tags/hexo/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>如何去除gedit编辑文件时生成的备份文件</title>
+    <link href="/2015/01/22/%E5%A6%82%E4%BD%95%E5%8E%BB%E9%99%A4gedit%E7%BC%96%E8%BE%91%E6%96%87%E4%BB%B6%E6%97%B6%E7%94%9F%E6%88%90%E7%9A%84%E5%A4%87%E4%BB%BD%E6%96%87%E4%BB%B6/"/>
+    <id>/2015/01/22/如何去除gedit编辑文件时生成的备份文件/</id>
+    <published>2015-01-21T16:00:00.000Z</published>
+    <updated>2019-04-08T15:19:29.820Z</updated>
+    
+    <content type="html"><![CDATA[<p>ubuntu下使用gedit是个不错的选择，但每次编辑都会生成*～的备份文件，<br>改的文件多了就会积累许多垃圾了，那么如何取消备份文件生成，或者批量删除这些文件呢？<br>下面就给大家提供两个方法来解决这个问题</p><p>1.取消生成</p><p>打开gedit-首选项-编辑器-文件保存，将”在保存之前创建一个备份文件”勾选去掉</p><p>2.批量删除这类文件的方法如下：</p><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">$ <span class="builtin-name">find</span> / -name <span class="string">"*~"</span> -<span class="builtin-name">print</span> -exec rm -f &#123;&#125; \;</span><br></pre></td></tr></table></figure>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;ubuntu下使用gedit是个不错的选择，但每次编辑都会生成*～的备份文件，&lt;br&gt;改的文件多了就会积累许多垃圾了，那么如何取消备份文件生成，或者批量删除这些文件呢？&lt;br&gt;下面就给大家提供两个方法来解决这个问题&lt;/p&gt;
+&lt;p&gt;1.取消生成&lt;/p&gt;
+&lt;p&gt;打开gedit-
+      
+    
+    </summary>
+    
+      <category term="教程" scheme="/categories/%E6%95%99%E7%A8%8B/"/>
+    
+    
+      <category term="ubuntu" scheme="/tags/ubuntu/"/>
+    
+      <category term="gedit" scheme="/tags/gedit/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>为Github帐号添加SSH keys</title>
+    <link href="/2015/01/20/%E4%B8%BAGithub%E5%B8%90%E5%8F%B7%E6%B7%BB%E5%8A%A0SSH-keys/"/>
+    <id>/2015/01/20/为Github帐号添加SSH-keys/</id>
+    <published>2015-01-19T16:00:00.000Z</published>
+    <updated>2019-04-08T15:21:19.280Z</updated>
+    
+    <content type="html"><![CDATA[<p>#一、创建SSH key<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$ </span>ssh-keygen -t rsa -C <span class="string">"your_email@example.com"</span></span><br><span class="line"><span class="comment"># Creates a new ssh key, using the provided email as a label</span></span><br><span class="line"><span class="comment"># Generating public/private rsa key pair.</span></span><br><span class="line"><span class="comment"># Enter file in which to save the key (/home/you/.ssh/id_rsa):</span></span><br></pre></td></tr></table></figure></p><p>然后系统提示输入文件保存位置等信息,按提示填写回车<br><figure class="highlight routeros"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Enter passphrase (empty <span class="keyword">for</span> <span class="literal">no</span> passphrase): [Type a passphrase]</span><br><span class="line"><span class="comment"># Enter same passphrase again: [Type passphrase again]</span></span><br><span class="line"></span><br><span class="line">Your identification has been saved <span class="keyword">in</span> /home/you/.ssh/id_rsa.</span><br><span class="line"><span class="comment"># Your public key has been saved in /home/you/.ssh/id_rsa.pub.</span></span><br><span class="line"><span class="comment"># The key fingerprint is:</span></span><br><span class="line"><span class="comment"># 01:0f:f4:3b:ca:85:d6:17:a1:7d:f0:68:9d:f0:a2:db your_email@example.com</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># start the ssh-agent in the background</span></span><br><span class="line">$ eval <span class="string">"<span class="variable">$(ssh-agent -s)</span>"</span></span><br><span class="line"><span class="comment"># Agent pid 59566</span></span><br><span class="line">$ ssh-<span class="builtin-name">add</span> ~/.ssh/id_rsa</span><br></pre></td></tr></table></figure></p><p>生成的SSH key文件保存在中～/.ssh/id_rsa.pub<br>文本编辑工具打开该文件：<br><figure class="highlight elixir"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$ </span>gedit ~<span class="regexp">/.ssh/id</span>_rsa.pub</span><br></pre></td></tr></table></figure></p><p>接着拷贝.ssh/id_rsa.pub文件内的所有内容，将它粘帖到github帐号管理中的添加SSH key界面中。</p><p>#二、打开github帐号管理中的添加SSH key，步骤如下</p><ol><li><p>登录github</p></li><li><p>点击右上方的Accounting settings图标</p></li><li><p>选择 SSH key</p></li><li><p>点击 Add SSH key</p></li></ol><p>在出现的界面中填写SSH key的名称，填一个你自己喜欢的名称即可，然后将上面拷贝的~/.ssh/id_rsa.pub文件内容粘帖到key一栏，在点击“add key”按钮就可以了。</p><p>添加过程github会提示你输入一次你的github密码</p><p>添加完成后再次执行git clone就可以成功克隆github上的代码库了。</p><p>参考来源：<br><a href="https://help.github.com/articles/generating-ssh-keys/#platform-linux" target="_blank" rel="noopener">https://help.github.com/articles/generating-ssh-keys/#platform-linux</a><br><a href="http://blog.csdn.net/keyboardota/article/details/7603630" target="_blank" rel="noopener">http://blog.csdn.net/keyboardota/article/details/7603630</a></p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;#一、创建SSH key&lt;br&gt;&lt;figure class=&quot;highlight elixir&quot;&gt;&lt;table&gt;&lt;tr&gt;&lt;td class=&quot;gutter&quot;&gt;&lt;pre&gt;&lt;span class=&quot;line&quot;&gt;1&lt;/span&gt;&lt;br&gt;&lt;span class=&quot;line&quot;&gt;2&lt;/
+      
+    
+    </summary>
+    
+      <category term="教程" scheme="/categories/%E6%95%99%E7%A8%8B/"/>
+    
+    
+      <category term="github" scheme="/tags/github/"/>
+    
+      <category term="ssh" scheme="/tags/ssh/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>Test</title>
+    <link href="/2015/01/17/Test/"/>
+    <id>/2015/01/17/Test/</id>
+    <published>2015-01-16T16:00:00.000Z</published>
+    <updated>2019-04-10T13:43:26.393Z</updated>
+    
+    <content type="html"><![CDATA[<p>这是一次测试</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;p&gt;这是一次测试&lt;/p&gt;
+
+      
+    
+    </summary>
+    
+      <category term="杂项" scheme="/categories/%E6%9D%82%E9%A1%B9/"/>
+    
+    
+      <category term="Test" scheme="/tags/Test/"/>
+    
+  </entry>
+  
+</feed>
